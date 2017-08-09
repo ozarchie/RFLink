@@ -1509,13 +1509,18 @@ byte PluginRXCall(byte Function, char *str) {
 
   for (x=0; x<PLUGIN_MAX; x++) {
       if (Plugin_id[x]!=0) {
-         SignalHash=x;                                       // store plugin number 
+         SignalHash=x;                                       // store plugin number
+         Serial.print(x);
+         Serial.print(", ");        
          if (Plugin_ptr[x](Function,str)) {
             SignalHashPrevious=SignalHash;                      // store previous plugin number after success
+            Serial.println(" Success");
             return true;
          }
       }
   }
+  Serial.println(" Done");
+  Serial.println("No matching CODEC");
   return false;
 }
  /*********************************************************************************************\
