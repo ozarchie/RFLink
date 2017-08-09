@@ -1,11 +1,25 @@
 /*********************************************************************************************/
-boolean ScanEvent(void) {                                         // Deze routine maakt deel uit van de hoofdloop en wordt iedere 125uSec. doorlopen
-  unsigned long Timer=millis()+SCAN_HIGH_TIME;
+boolean ScanEvent(void) {                                         // This routine is part of the main loop and each 125uSec. by walk
+  unsigned long Timer = millis() + SCAN_HIGH_TIME;
+  while(Timer > millis() || RepeatingTimer > millis()) {
+       if (FetchSignal(PIN_RF_RX_DATA, HIGH)) {                    // RF: *** data start ***
 
-  while(Timer>millis() || RepeatingTimer>millis()) {
-       if (FetchSignal(PIN_RF_RX_DATA,HIGH)) {                    // RF: *** data start ***
-          if ( PluginRXCall(0,0) ) {                                // Check all plugins to see which plugin can handle the received signal.
-             RepeatingTimer=millis()+SIGNAL_REPEAT_TIME;
+          Serial.print("Repeats:  ");
+          Serial.println(RawSignal.Repeats);
+          Serial.print("Multiply: ");
+          Serial.println(RawSignal.Multiply);
+          Serial.print("Number:   ");
+          Serial.println(RawSignal.Number);
+          Serial.print("Time:     ");
+          Serial.println(RawSignal.Time);
+          Serial.print("Data:     ");
+          for (int i = 0; i < RawSignal.Number; i += 1) {
+            Serial.print(RawSignal.Pulses[i]);
+          }
+          Serial.println();
+                  
+          if ( PluginRXCall(0, 0) ) {                              // Check all plugins to see which plugin can handle the received signal.
+             RepeatingTimer = millis() + SIGNAL_REPEAT_TIME;
              return true;
           }
        }
@@ -13,20 +27,21 @@ boolean ScanEvent(void) {                                         // Deze routin
   return false;
 }
 /**********************************************************************************************\
- * Haal de pulsen en plaats in buffer. 
- * bij de TSOP1738 is in rust is de uitgang hoog. StateSignal moet LOW zijn
- * bij de 433RX is in rust is de uitgang laag. StateSignal moet HIGH zijn
+ * Get the pulses and place in buffer. 
+ * when the TSOP1738 is at rest, the output is high. StateSignal should be LOW
+ * when the 433RX is at rest, the output is ??? layer. They have HIGH StateSignal
  * 
  \*********************************************************************************************/
-const unsigned long LoopsPerMilli=345;
-const unsigned long Overhead=0;  
+const unsigned long LoopsPerMilli = 345;
+const unsigned long Overhead = 0;  
 
 // Because this is a time critical routine, we use global variables so that the variables 
-// do not need to be initialized at each function call. 
-int RawCodeLength=0;
-unsigned long PulseLength=0L;
-unsigned long numloops=0L;
-unsigned long maxloops=0L;
+// do not need to be initialized at each function call.
+
+int RawCodeLength = 0;
+unsigned long PulseLength = 0L;
+unsigned long numloops = 0L;
+unsigned long maxloops = 0L;
 
 boolean Ftoggle=false;
 uint8_t Fbit=0;
@@ -38,7 +53,7 @@ boolean FetchSignal(byte DataPin, boolean StateSignal) {
    uint8_t Fport = digitalPinToPort(DataPin);
    uint8_t FstateMask = (StateSignal ? Fbit : 0);
 
-   if ((*portInputRegister(Fport) & Fbit) == FstateMask) {                       // Als er signaal is
+   if ((*portInputRegister(Fport) & Fbit) == FstateMask) {                       // If signal is
      // Als het een herhalend signaal is, dan is de kans groot dat we binnen hele korte tijd weer in deze
      // routine terugkomen en dan midden in de volgende herhaling terecht komen. Daarom wordt er in dit
      // geval gewacht totdat de pulsen voorbij zijn en we met het capturen van data beginnen na een korte 
@@ -59,20 +74,20 @@ boolean FetchSignal(byte DataPin, boolean StateSignal) {
        numloops = 0;
        while (((*portInputRegister(Fport) & Fbit) == FstateMask) ^ Ftoggle)      // while() loop *A*
        if (numloops++ == maxloops) break;                                        // timeout 
-       PulseLength=((numloops + Overhead)* 1000) / LoopsPerMilli;                // Contains pulslength in microseconds
-       if (PulseLength<MIN_PULSE_LENGTH) break;                                  // Pulse length too short
-       Ftoggle=!Ftoggle;    
-       RawSignal.Pulses[RawCodeLength++]=PulseLength/(unsigned long)(RAWSIGNAL_SAMPLE_RATE); // store in RawSignal !!!! 
-    } while (RawCodeLength<RAW_BUFFER_SIZE && numloops<=maxloops);               // For as long as there is space in the buffer, no timeout etc.
-    if (RawCodeLength>=MIN_RAW_PULSES) {
-       RawSignal.Repeats=0;                                                      // no repeats
-       RawSignal.Multiply=RAWSIGNAL_SAMPLE_RATE;                                 // sample size.
-       RawSignal.Number=RawCodeLength-1;                                         // Number of received pulse times (pulsen *2)
-       RawSignal.Pulses[RawSignal.Number+1]=0;                                   // Last element contains the timeout. 
-       RawSignal.Time=millis();                                                  // Time the RF packet was received (to keep track of retransmits
+       PulseLength = ((numloops + Overhead)* 1000) / LoopsPerMilli;              // Contains pulselength in microseconds
+       if (PulseLength < MIN_PULSE_LENGTH) break;                                // Pulse length too short
+       Ftoggle= ! Ftoggle;    
+       RawSignal.Pulses[RawCodeLength++] = PulseLength/(unsigned long)(RAWSIGNAL_SAMPLE_RATE); // store in RawSignal !!!! 
+    } while (RawCodeLength < RAW_BUFFER_SIZE && numloops <= maxloops);           // For as long as there is space in the buffer, no timeout etc.
+    if (RawCodeLength >= MIN_RAW_PULSES) {
+       RawSignal.Repeats = 0;                                                      // no repeats
+       RawSignal.Multiply = RAWSIGNAL_SAMPLE_RATE;                                 // sample size.
+       RawSignal.Number = RawCodeLength-1;                                         // Number of received pulse times (pulsen *2)
+       RawSignal.Pulses[RawSignal.Number+1] = 0;                                   // Last element contains the timeout. 
+       RawSignal.Time = millis();                                                  // Time the RF packet was received (to keep track of retransmits
        return true;
     } else {
-      RawSignal.Number=0;    
+      RawSignal.Number = 0;    
     }
   }
   return false;
