@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 /**********************************************************************************************\
  * Load plugins
 \*********************************************************************************************/
@@ -1507,20 +1509,15 @@ byte PluginTXInitCall(byte Function, char *str) {
 byte PluginRXCall(byte Function, char *str) {
   int x;
 
-  for (x=0; x<PLUGIN_MAX; x++) {
-      if (Plugin_id[x]!=0) {
-         SignalHash=x;                                       // store plugin number
-         Serial.print(x);
-         Serial.print(", ");        
-         if (Plugin_ptr[x](Function,str)) {
-            SignalHashPrevious=SignalHash;                      // store previous plugin number after success
-            Serial.println(" Success");
+  for (x = 0; x < PLUGIN_MAX; x++) {
+      if (Plugin_id[x] != 0) {
+         SignalHash = x;                             // store plugin number 
+         if (Plugin_ptr[x](Function, str)) {
+            SignalHashPrevious = SignalHash;         // store previous plugin number after success
             return true;
          }
       }
   }
-  Serial.println(" Done");
-  Serial.println("No matching CODEC");
   return false;
 }
  /*********************************************************************************************\

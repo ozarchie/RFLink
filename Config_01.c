@@ -12,37 +12,37 @@
 // ------------------------------------------------------------------------
 // -- Any of the following protocols can be excluded whenever not needed --
 // ------------------------------------------------------------------------
-#define PLUGIN_002              // Lacrosse v2 2300/3600
-#define PLUGIN_003              // Kaku : Klik-Aan-Klik-Uit (with code wheel) aka ARC
-#define PLUGIN_004              // NewKAKU : Klik-Aan-Klik-Uit with automatic coding aka Intertechno.
-#define PLUGIN_005              // Eurodomest
-#define PLUGIN_006              // Blyss
-#define PLUGIN_007              // Conrad RSL2
-#define PLUGIN_008              // Kambrook
-#define PLUGIN_009              // X10 RF
-#define PLUGIN_010              // TRC02 RGB Switch
-#define PLUGIN_011              // Home Confort
-#define PLUGIN_012              // Flamingo FA500R
-#define PLUGIN_013              // Powerfix/Quigg
-#define PLUGIN_014              // Ikea Koppla
-#define PLUGIN_015              // Home Easy EU 
+#define PLUGIN_002              // 104  // Lacrosse v2 2300/3600
+#define PLUGIN_003              //  50  // Kaku : Klik-Aan-Klik-Uit (with code wheel) aka ARC
+#define PLUGIN_004              // 132  // NewKAKU : Klik-Aan-Klik-Uit with automatic coding aka Intertechno.
+#define PLUGIN_005              //  50  // Eurodomest
+#define PLUGIN_006              // 106  // Blyss
+#define PLUGIN_007              //  66  // Conrad RSL2
+#define PLUGIN_008              //  96  // Kambrook
+#define PLUGIN_009              //  66+ // X10 RF
+#define PLUGIN_010              // 180+ // TRC02 RGB Switch
+#define PLUGIN_011              // 100  // Home Confort
+#define PLUGIN_012              //  26+ // Flamingo FA500R
+#define PLUGIN_013              //  42  // Powerfix/Quigg
+#define PLUGIN_014              //  36  // Ikea Koppla
+#define PLUGIN_015              // 116  // Home Easy EU
 // -------------------
 // Weather sensors
 // -------------------
-#define PLUGIN_030              // Alecto V1 (WS3500) 434 MHz.
-#define PLUGIN_031              // Alecto V3 (WS1100/WS1200/WSD-19) 433.9 MHz.
-#define PLUGIN_032              // Alecto V4
-#define PLUGIN_033              // Conrad Pool Thermometer
-#define PLUGIN_034              // Cresta 
-#define PLUGIN_035              // Imagintronix
-#define PLUGIN_040              // Mebus
-#define PLUGIN_041              // LaCrosse v3 ws7000
-#define PLUGIN_042              // UPM/Esic
-#define PLUGIN_043              // LaCrosse v1
-#define PLUGIN_044              // Auriol v3
-#define PLUGIN_045              // Auriol
-#define PLUGIN_046              // Auriol v2 / Xiron
-#define PLUGIN_048              // Oregon V1/2/3
+#define PLUGIN_030              //  74  // Alecto V1 (WS3500) 434 MHz.
+#define PLUGIN_031              //  94+ // Alecto V3 (WS1100/WS1200/WSD-19) 433.9 MHz.
+#define PLUGIN_032              //  74+ // Alecto V4
+#define PLUGIN_033              //  80  // Conrad Pool Thermometer
+#define PLUGIN_034              // 128+ // Cresta
+#define PLUGIN_035              //  96  // Imagintronix
+#define PLUGIN_040              //  58  // Mebus
+#define PLUGIN_041              //  92+ // LaCrosse v3 ws7000
+#define PLUGIN_042              //  46+ // UPM/Esic
+#define PLUGIN_043              //  88  // LaCrosse v1
+#define PLUGIN_044              //  82  // Auriol v3
+#define PLUGIN_045              //  66  // Auriol
+#define PLUGIN_046              //  74  // Auriol v2 / Xiron
+#define PLUGIN_048              // ???  // Oregon V1/2/3
 // -------------------
 // Motion Sensors, include when needed
 // -------------------

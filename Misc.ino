@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 /*********************************************************************************************\
  * Convert HEX or DEC tring to unsigned long HEX, DEC
 \*********************************************************************************************/
@@ -27,7 +29,7 @@ int str2cmd(char *command) {
 \*********************************************************************************************/
 float ul2float(unsigned long ul) {
     float f;
-    memcpy(&f, &ul, 4);
+    memcpy(&f, &ul,4);
     return f;
 }
 /*********************************************************************************************/
@@ -48,6 +50,14 @@ void PrintHex8(uint8_t *data, uint8_t length) { // prints 8-bit data in hex (low
   }
   tmp[length*2] = 0;
   Serial.print(tmp);
+}
+/*********************************************************************************************/
+void PrintHex16(unsigned int *data, uint8_t length) { // prints 8-bit data in hex (lowercase)
+  uint8_t tmp[2];
+  
+  tmp[0] = (data[0] >> 8);
+  tmp[1] = (data[0] & 0xFF);
+  PrintHex8(tmp, 2);
 }
 /*********************************************************************************************/
 // todo: make uppercase?  3a = 3 or 48 (0x30) = 0x33   >57 (0x39)   a>3a >39 >   +27 
