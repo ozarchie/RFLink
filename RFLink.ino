@@ -1,77 +1,46 @@
 #include <Arduino.h>
 
-#define BUILDNR                         0x07                                    // shown in version
-#define REVNR                           0x33                                    // shown in version and startup string
-#define MIN_RAW_PULSES                    20                                    // =8 bits. Minimal number of bits*2 that need to have been received before we spend CPU time on decoding the signal.
-#define RAWSIGNAL_SAMPLE_RATE             30                                    // Sample width / resolution in uSec for raw RF pulses.
-#define MIN_PULSE_LENGTH                  25                                    // Pulses shorter than this value in uSec. will be seen as garbage and not taken as actual pulses.
-#define MAX_PULSE_LENGTH                2000                                    // Pulses longer than this value in uSec. will be seen as garbage and not taken as actual pulses.
-#define SIGNAL_TIMEOUT                     7                                    // Timeout, after this time in mSec. the RF signal will be considered to have stopped.
-#define SIGNAL_REPEAT_TIME               500                                    // Time in mSec. in which the same RF signal should not be accepted again. Filters out retransmits.
-#define BAUD                          115200                                    // Baudrate for serial communication.
-#define TRANSMITTER_STABLE_DELAY         500                                    // delay to let the transmitter become stable (Note: Aurel RTX MID needs 500µS/0,5ms).
-#define RAW_BUFFER_SIZE                  512                                    // Maximum number of pulses that is received in one go.
-#define PLUGIN_MAX                        55                                    // Maximum number of Receive plugins
-#define PLUGIN_TX_MAX                     26                                    // Maximum number of Transmit plugins
-#define SCAN_HIGH_TIME                    50                                    // Time interval in ms. For background tasks fast processing
-#define FOCUS_TIME                        50                                    // Duration in mSec. that, after receiving serial data from USB only the serial port is checked. 
-#define INPUT_COMMAND_SIZE                60                                    // Maximum number of characters that a command via serial can be.
-#define PRINT_BUFFER_SIZE                 60                                    // Maximum number of characters that a command should print in one go via the print buffer.
+// RFLink
+// ======
+#include "RFLink.h"       // RFLink configurations
+#include "Config_01.c"    //  and the protocol configurations
 
-/* Config file, here you can specify which plugins to load */
-#include "Config_01.c"
+// ESP32 WiFi
+// ==========
+#include <WiFi.h>
+#include <ESPmDNS.h>      // for avahi
+#include <WiFiUdp.h>      // For ntp
+#include "RFcomms.h"      // RFLink WiFi and MQTT configurations
 
-#define VALUE_PAIR                      44
-#define VALUE_ALLOFF                    55
-#define VALUE_OFF                       74
-#define VALUE_ON                        75
-#define VALUE_DIM                       76
-#define VALUE_BRIGHT                    77
-#define VALUE_UP                        78
-#define VALUE_DOWN                      79
-#define VALUE_STOP                      80
-#define VALUE_CONFIRM                   81
-#define VALUE_LIMIT                     82
-#define VALUE_ALLON                     141
+// ESP32 MQTT
+// ==========
+#include <PubSubClient.h> // Allows us to connect to, and publish to the MQTT brokerinclude <stdlib.h>
+#include <ArduinoJson.h>  // JSON library for MQTT strings
+#include <math.h>
 
-// PIN Definition 
-#define PIN_BSF_0                   22                                          // Board Specific Function lijn-0
-#define PIN_BSF_1                   23                                          // Board Specific Function lijn-1
-#define PIN_BSF_2                   24                                          // Board Specific Function lijn-2
-#define PIN_BSF_3                   25                                          // Board Specific Function lijn-3
-#define PIN_RF_TX_VCC               15                                          // +5 volt / Vcc power to the transmitter on this pin
-#define PIN_RF_TX_DATA              14                                          // Data to the 433Mhz transmitter on this pin
-#define PIN_RF_RX_VCC               16                                          // Power to the receiver on this pin
-#define PIN_RF_RX_DATA              19                                          // On this input, the 433Mhz-RF signal is received. LOW when no signal.
+// Real Time Clock Libraries
+// Time related libararies
+#include <DS1307RTC.h>     //https://www.pjrc.com/teensy/td_libs_DS1307RTC.html
+#include <TimeLord.h>      //https://github.com/probonopd/TimeLord
+#include <TimeLib.h>       //https://github.com/PaulStoffregen/Time
+#include <TimeAlarms.h>    //https://github.com/PaulStoffregen/TimeAlarms
+//#include <Timezone.h>      //https://github.com/schizobovine/Timezone (https://github.com/JChristensen/Timezone)
 
-//****************************************************************************************************************************************
-byte dummy=1;                                                                   // get the linker going. Bug in Arduino. (old versions?)
+#include <Wire.h>
+#include <Bounce2.h>        // Used for "debouncing" inputs
 
-void(*Reboot)(void)=0;                                                          // reset function on adres 0.
+
+// RFLink globals
+// ==============
 byte PKSequenceNumber=0;                                                        // 1 byte packet counter
 boolean RFDebug=false;                                                          // debug RF signals with plugin 001 
 boolean RFUDebug=false;                                                         // debug RF signals with plugin 254 
 boolean QRFDebug=false;                                                         // debug RF signals with plugin 254 but no multiplication
 
-//uint8_t RFbit, RFport;                                                          // for processing RF signals.
-
 char pbuffer[PRINT_BUFFER_SIZE];                                                // Buffer for printing data
-char InputBuffer_Serial[INPUT_COMMAND_SIZE];                                    // Buffer for Seriel data
+char InputBuffer_Serial[INPUT_COMMAND_SIZE];                                    // Buffer for Serial data
 
-// Van alle devices die worden mee gecompileerd, worden in een tabel de adressen opgeslagen zodat hier naar toe gesprongen kan worden
-void PluginInit(void);
-void PluginTXInit(void);
-boolean (*Plugin_ptr[PLUGIN_MAX])(byte, char*);                                 // Receive plugins
-byte Plugin_id[PLUGIN_MAX];
-boolean (*PluginTX_ptr[PLUGIN_TX_MAX])(byte, char*);                            // Transmit plugins
-byte PluginTX_id[PLUGIN_TX_MAX];
-
-void PrintHex8(uint8_t *data, uint8_t length);                                  // prototype
-void PrintHexByte(uint8_t data);                                                // prototype
-byte reverseBits(byte data);                                                    // prototype
-void RFLinkHW( void );                                                          // prototype
-
-struct RawSignalStruct                                                          // Raw signal variabelen places in a struct
+struct RawSignalStruct                                                          // Raw signal variables placed in a struct
   {
   int  Number;                                                                  // Number of pulses, times two as every pulse has a mark and a space.
   byte Repeats;                                                                 // Number of re-transmits on transmit actions.
@@ -81,27 +50,153 @@ struct RawSignalStruct                                                          
   unsigned int Pulses[RAW_BUFFER_SIZE + 2];                                               // Table with the measured pulses in microseconds divided by RawSignal.Multiply. (halves RAM usage)
                                                                                 // First pulse is located in element 1. Element 0 is used for special purposes, like signalling the use of a specific plugin
 } RawSignal={0,0,0,0,0,0L};
-// ===============================================================================
+
+// RFRaw Globals
+// =============
+
+const unsigned long LoopsPerMilli = 15000;       // ESP32 does 15k loops in 1 mS!
+const unsigned long Overhead = 0;  
+
+int RawCodeLength=0;
+unsigned long PulseLength = 0L;
+unsigned long numloops = 0L;
+unsigned long maxloops = 0L;
+
+unsigned int startuS;
+unsigned int finishuS;
+
+boolean Ftoggle=false;
+uint8_t Fbit=0;
+uint8_t Fport=0;
+uint8_t FstateMask=0;
+
+uint8_t firsttime = 0;
+
+// Plugin globals
+// ==============
 unsigned long RepeatingTimer=0L;
-unsigned long SignalCRC=0L;                                                     // holds the bitstream value for some plugins to identify RF repeats
-unsigned long SignalHash=0L;                                                    // holds the processed plugin number
-unsigned long SignalHashPrevious=0L;                                            // holds the last processed plugin number
+unsigned long SignalCRC=0L;            // holds the bitstream value for some plugins to identify RF repeats
+unsigned long SignalHash=0L;           // holds the processed plugin number
+unsigned long SignalHashPrevious=0L;   // holds the last processed plugin number
+
+// WiFi configuration
+// ==================
+// the media access control address for the ESP32
+byte mac[] = { 0x55, 0x55, 0x55, 0x55, 0x55, 0x55 };
+char mac_str[16] = "555555555555";  // Default mac id      
+char hostString[64] = {0};          // mDNS Hostname for this RFLink
+
+const char* ssid = RFLink_SSID;
+const char* password = RFLink_PWD;
+int WifiStatus = 0;
+WiFiClient RFClient;
+WiFiUDP udp;                                          // UDP instance to send and receive packets over UDP
+
+// ntp config
+// ==========
+IPAddress ntpServerIP;                                // Place to store IP address of mqttbroker.local
+char ntpServer_hostname[64] = MQTT_broker_default;    // Assume mqttbroker is also the time server
+const int NTP_PACKET_SIZE = 48;                       // NTP time stamp is in the first 48 bytes of the message
+byte packetBuffer[ NTP_PACKET_SIZE];                  //  buffer to hold incoming and outgoing packets
+const unsigned int localPort = UDP_port;              // local port to listen for UDP packets
+
+unsigned long mscount;      // millisecond counter
+time_t epoch;               // UTC seconds
+time_t currentTime;         // Local value
+
+int timeZone = +10; // Eastern Standard Time (Au)
+//int timeZone = -5;  // Eastern Standard Time (USA)
+//int timeZone = -4;  // Eastern Daylight Time (USA)
+//int timeZone = -8;  // Pacific Standard Time (USA)
+//int timeZone = -7;  // Pacific Daylight Time (USA)
+
+
+// MQTT Configuration
+// ==================
+char MQTT_broker_hostname[64] = MQTT_broker_default;    // Space to hold mqtt broker hostname
+const char* clientID = "RFLink";
+const char* mqtt_topic_command = "COMMAND/";            // General Command topic
+const char* mqtt_topic_status = "STATUS/RESPONSE/";     // General Status topic
+const char* mqtt_topic_asset = "ASSET/RESPONSE/";       // Genral Asset topic
+const char* mqtt_topic_exception = "EXCEPTION/";        // General Exception topic
+const char* mqtt_topic_config = "CONFIG/";              // General Configuration topic
+char mqtt_topic[256] = "";                              // Topic for this RFLink device
+
+#define MAXTOPICS 5
+#define MAXLISTEN 12
+#define STATUSSTART 0
+#define ASSETSTART 1
+#define CONFIGSTART 4
+
+const char* mqtt_topic_array[MAXTOPICS] = {
+  "STATUS/QUERY",
+  "ASSET/QUERY",
+  "ASSET/QUERY/",
+  "ASSET/QUERY/*",
+  "CONFIG/QUERY/"
+};
+
+const char* mqtt_listen_array[MAXLISTEN] = {
+  "COMMAND/",
+  "CONFIG/",
+  "EXCEPTION/",
+  "STATUS/QUERY",
+  "STATUS/QUERY/",
+  "STATUS/QUERY/#",
+  "ASSET/QUERY",
+  "ASSET/QUERY/",
+  "ASSET/QUERY/#",
+  "CONFIG/QUERY",
+  "CONFIG/QUERY/",
+  "CONFIG/QUERY/#"
+};
+
+char MQTTOutput[512];                                   // String storage for the JSON data
+char MQTTInput[512];                                    // String storage for the JSON data
+
+// Callback function header
+void MQTTcallback(char* topic, byte* payload, unsigned int length);
+PubSubClient MQTTClient(RFClient);                      // 1883 is the listener port for the Broker
+
+// Prepare JSON
+// ============
+StaticJsonBuffer<512> RF_topic_exception;
+JsonObject& exception_topic = RF_topic_exception.createObject();
+
+
 
 void setup() {
   Serial.begin(BAUD);                                                           // Initialise the serial port
-  delay(1000);
+  while (!Serial) ;
+
   pinMode(PIN_RF_RX_DATA, INPUT);                                               // Initialise in/output ports
   pinMode(PIN_RF_TX_DATA, OUTPUT);                                              // Initialise in/output ports
   pinMode(PIN_RF_TX_VCC,  OUTPUT);                                              // Initialise in/output ports
   pinMode(PIN_RF_RX_VCC,  OUTPUT);                                              // Initialise in/output ports    
   digitalWrite(PIN_RF_RX_VCC,HIGH);                                             // turn VCC to RF receiver ON
-  digitalWrite(PIN_RF_RX_DATA,INPUT_PULLUP);                                    // pull-up resister on (to prevent garbage)
-  
+  digitalWrite(PIN_RF_RX_DATA,INPUT_PULLUP);                                    // pull-up resister on (to prevent garbage)  
   pinMode(PIN_BSF_0,OUTPUT);                                                    // rflink board switch signal
   digitalWrite(PIN_BSF_0,HIGH);                                                 // rflink board switch signal
+  
+// Main Code Setup
+// ===============
 
-  //RFbit=digitalPinToBitMask(PIN_RF_RX_DATA);
-  //RFport=digitalPinToPort(PIN_RF_RX_DATA);
+  WifiStartup();                                                                   // Initialize Wifi, NTP 
+
+  mscount = millis();   // initialize the millisecond counter
+
+// Start MQTT support
+// ==================
+  if (WiFi.status() == WL_CONNECTED)  MQTTStartup();
+  
+  currentTime = now();
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println(F("MQTT Setup Complete. Listening for topics .."));
+    }
+    else {
+      Serial.println(F("WiFi not connected, trying again later .."));     
+    }
+  
   Serial.println(""); 
   Serial.print(F("20;00;Nodo RadioFrequencyLink - RFLink Gateway V1.1 - "));
   sprintf(InputBuffer_Serial,"R%02x;",REVNR);
@@ -113,38 +208,26 @@ void setup() {
 }
 
 void loop() {
-  byte SerialInByte=0;                                                          // incoming character value
-  int SerialInByteCounter=0;                                                    // number of bytes counter 
+//  byte SerialInByte=0;                                                          // incoming character value
+//  int SerialInByteCounter=0;                                                    // number of bytes counter 
 
-  byte ValidCommand=0;
-  unsigned long FocusTimer=0L;                                                  // Timer to keep focus on the task during communication
-  InputBuffer_Serial[0]=0;                                                      // erase serial buffer string 
+//  byte ValidCommand=0;
+//  unsigned long FocusTimer=0L;                                                  // Timer to keep focus on the task during communication
+//  InputBuffer_Serial[0]=0;                                                      // erase serial buffer string 
 
   while(true) {
+
+    if (WiFi.status() != WL_CONNECTED)  {
+      WifiRetryConnect();
+//      if (WiFi.status() == WL_CONNECTED)  WifiRetryMDNS();
+      if (WiFi.status() == WL_CONNECTED)  MQTTStartup();
+    }
     RawSignal.Time = millis();                                                  // Time the RF packet was received (to keep track of retransmits)
     ScanEvent();                                                                // Scan for RF events
-/*    
-    if (RawSignal.Number > 0) {
 
-          Serial.print("Repeats:  ");
-          Serial.println(RawSignal.Repeats);
- //         Serial.print("Multiply: ");
- //         Serial.println(RawSignal.Multiply);
-          Serial.print("Number:   ");
-          Serial.println(RawSignal.Number);
-          Serial.print("Time:     ");
-          Serial.println(RawSignal.Time);
- 
-          Serial.print("Data:     ");
-          for (int i = 0; i < RawSignal.Number; i += 1) {
-            Serial.print(RawSignal.Pulses[i] * RAWSIGNAL_SAMPLE_RATE);
-            Serial.print(" ");
-          }
-          Serial.println();
-    }
-*/
-    
-    // SERIAL: *************** kijk of er data klaar staat op de seriele poort **********************
+    MQTTClient.loop();                                                          // Check for MQTT topics
+    Alarm.delay(0);      
+/*
     if(Serial.available()) {
       FocusTimer=millis()+FOCUS_TIME;
 
@@ -245,7 +328,10 @@ void loop() {
        }// if(Serial.available())
     }// while 
    }// if(Serial.available())
+*/
   }// while 
-} // void
-/*********************************************************************************************/
+}
+
+
+
 
