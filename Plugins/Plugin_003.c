@@ -49,7 +49,7 @@
  *                    B bit 4-7  = device  2^4 = 16 devices
  *                    C bit 8-10 = always (110)  ! (AND with 0x700 result must be 0x600)
  *                    D bit 11   = on/off command (1=on 0=off)
- * Timing: 8-9 /33-34  (low/high)
+ * Timing: 8-9 / 33-34  (low/high)
  * Pulses: 0101 and 0110   eg.  bit state 0 and f
  * 1 110 0000 0000  A1 on
  * 0 110 0000 0000  A1 off
@@ -69,7 +69,7 @@
  *                    C bit 5-8  = device / Unitcode   1111 each bit corresponds to a button number 
  *                    D bit 9-10 = always '11'
  *                    E bit 11   = on/off command (1=on 0=off)
- * Timing: 8-9 /33-34 
+ * Timing: 8-9 / 33-34
  * Analyser: 362 / 1086
  * Pulses: 0101 and 0110  eg.  bit state 0 and f 
  * 1 110 100 1110 1  1 on
@@ -85,7 +85,7 @@
  *    Comfort         B bit 5-9 = device  
  *                    C bit 10  = unknown (always 1?)
  *                    D bit 11  = on/off command (1=on 0=off)
- * Timing: 7-8-9 /29-30 
+ * Timing: 7-8-9 / 29-30
  * Pulses: 0101 and 0110  eg.  bit state 0 and f 
  * 1 1 10101 11000   I12 on
  * 0 1 10101 11000   I12 off
@@ -98,7 +98,7 @@
  *                    B bit 5-9  = device/unit code
  *                    C bit 10   = on/off command (reverse of D)
  *                    D bit 11   = on/off command
- * Timing: 8 /30
+ * Timing: 8 / 30
  * Analyser: 330/990     
  * Pulses: 0101 and 0110  eg.  bit state 0 and f 
  * 10 11110 11110  A ON
@@ -116,7 +116,7 @@
  *                    B bit 5-9  = device / Unitcode   each bit corresponds to a button number   
  *                    C bit 10   = off command   (inverse command)
  *                    D bit 11   = on command    
- * Timing: 11-12 /31-37 
+ * Timing: 11-12 / 31-37
  * Pulses: 0101 and 0110  eg.  bit state 0 and f 
  * 01 01000 00000
 
@@ -145,7 +145,7 @@
  *                    B bit 4-7  = device / Unitcode   11111 each bit corresponds to a button number 
  *                    C bit 8-10 = Always 110
  *                    D bit 11   = on command    
- * Timing: 9/34 
+ * Timing: 9 / 34
  * Pulses: 0101 and 0110  eg.  bit state 0 and f 
  * 111000000000 1 ON
  * 111000010000 2 ON
@@ -163,7 +163,7 @@
  *                    B bit 4-6  = Button 1/2/3
  *                    C bit 7-10 = Always 1111
  *                    D bit 11   = on/off command (on = tri-state)
- * Timing: 14/55
+ * Timing: 14 / 55
  * Analyser: 
  * Pulses: 0101, 1010 and 0110 eg.  bit state 0, 1 and f 
  * 211111101110 A1 on
@@ -187,7 +187,7 @@
  * SelectRemote       A/C/E      = always 0 0000 000 !
  * Blokker:           B bit 1-3  = device number 
  *                    D bit 8    = on/off command
- * Timing: 0-1-2 /33-34 
+ * Timing: 0-1-2 / 33-34
  * Analyser: 232 / 692
  * Pulses: 0101 and 1010   eg.  bit state 0 and 1 
  
@@ -216,7 +216,7 @@
  * 20;54;DEBUG;Pulses=50;Pulses(uSec)=1410,390,1350,360,1350,360,1380,360,1350,360,1380,360,1380,360,1380,360,1350,360,1350,360,1350,360,1380,360,1380,360,1380,360,1350,360,1380,360,1350,360,1350,360,390,1350,390,1350,390,1320,390,1320,420,1320,420,1320,390,6990;
  \*********************************************************************************************/
 #define KAKU_CodeLength             12              // number of data bits
-#define KAKU_R         300/RAWSIGNAL_SAMPLE_RATE    //360 // 300          // 370? 350 us
+#define KAKU_R         300/RAWSIGNAL_SAMPLE_RATE    // 360 // 300          // 370? 350 us
 #define KAKU_PULSEMID  510/RAWSIGNAL_SAMPLE_RATE    // (17)  510 = KAKU_R*2 not sufficient!
 
 #ifdef PLUGIN_003
@@ -284,8 +284,8 @@ boolean Plugin_003(byte function, char *string) {
          //else
          //if( (PTLow == 8 ||  PTLow == 9) && (PTHigh == 33 ||  PTHigh == 34) ) devicetype=7; // Perel st=0,dt=7
       }
-      //sprintf(pbuffer, "ST=%d DT=%d %d/%d",signaltype,devicetype,PTLow,PTHigh);     
-      //Serial.println( pbuffer );
+      // sprintf(pbuffer, "ST=%d DT=%d %d/%d",signaltype,devicetype,PTLow,PTHigh);
+      // Serial.println( pbuffer );
       // ==========================================================================
       // Turn pulses into bits
       // -------------------------------------------
@@ -365,7 +365,7 @@ boolean Plugin_003(byte function, char *string) {
       if( (SignalHash!=SignalHashPrevious) || ((RepeatingTimer+500)<millis()) || (((RepeatingTimer+1000)>millis())&&(SignalCRC != bitstream2)) ) { 
          // not seen the RF packet recently   
          if (signaltype == 0x07) {
-            if (((RepeatingTimer+1000)>millis())&&(SignalCRC != bitstream2)) {
+            if (((RepeatingTimer+1000)>millis()) && (SignalCRC != bitstream2)) {
                return true;       // skip tristate after normal arc 
             }
          }
@@ -385,7 +385,7 @@ boolean Plugin_003(byte function, char *string) {
          return true;
       }       
       //==================================================================================
-      // Determine signal type to sort out the various houdecode/unitcode/button bits and on/off command bits
+      // Determine signal type to sort out the various housecode/unitcode/button bits and on/off command bits
       //==================================================================================
       if (signaltype != 0x07) {
          if ((bitstream&0x700)!=0x600) {            // valid but not real KAKU

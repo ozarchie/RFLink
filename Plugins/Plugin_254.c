@@ -31,7 +31,7 @@ boolean Plugin_254(byte function, char *string) {
            Serial.print(RawSignal.Number);             // print number of pulses
            Serial.print(F(";Pulses(uSec)="));          // print pulse durations
            //PrintHex8(RawSignal.Pulses+1,RawSignal.Number-1);
-           PrintHex8(RawSignal.Pulses+1,RawSignal.Number);
+           PrintHex16(RawSignal.Pulses+1,RawSignal.Number);
         } else {
            if (RFUDebug==false) return false;          // debug is on? 
            if(RawSignal.Number<26)return false;        // make sure the packet is long enough to have a meaning 
