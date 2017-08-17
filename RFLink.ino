@@ -1,4 +1,20 @@
 #include <Arduino.h>
+/*
+ESP Modification: John Archbold
+
+Sketch Date: August 16th, 2017
+Sketch Version: V3.2.1
+
+Implements mDNS discovery of MQTT broker
+Implements definitions for
+  ESP-NodeMCU
+  ESP8266
+  WROOM32
+Communications Protocol
+  WiFi
+Communications Method
+  MQTT        Listens for messages on Port 1883
+*/
 
 // RFLink
 // ======
@@ -29,6 +45,7 @@
 #include <Wire.h>
 #include <Bounce2.h>        // Used for "debouncing" inputs
 
+void(*Reboot)(void)=0;
 
 // RFLink globals
 // ==============
@@ -39,6 +56,7 @@ boolean QRFDebug=false;                                                         
 
 char pbuffer[PRINT_BUFFER_SIZE];                                                // Buffer for printing data
 char InputBuffer_Serial[INPUT_COMMAND_SIZE];                                    // Buffer for Serial data
+char vbuffer[VERSION_BUFFER_SIZE];
 
 struct RawSignalStruct                                                          // Raw signal variables placed in a struct
   {
@@ -117,7 +135,7 @@ char MQTT_broker_hostname[64] = MQTT_broker_default;    // Space to hold mqtt br
 const char* clientID = "RFLink";
 const char* mqtt_topic_command = "COMMAND/";            // General Command topic
 const char* mqtt_topic_status = "STATUS/RESPONSE/";     // General Status topic
-const char* mqtt_topic_asset = "ASSET/RESPONSE/";       // Genral Asset topic
+const char* mqtt_topic_message = "MESSAGE/RESPONSE/";   // General Message topic
 const char* mqtt_topic_exception = "EXCEPTION/";        // General Exception topic
 const char* mqtt_topic_config = "CONFIG/";              // General Configuration topic
 char mqtt_topic[256] = "";                              // Topic for this RFLink device
@@ -208,12 +226,12 @@ void setup() {
 }
 
 void loop() {
-//  byte SerialInByte=0;                                                          // incoming character value
-//  int SerialInByteCounter=0;                                                    // number of bytes counter 
+  byte SerialInByte=0;                                                          // incoming character value
+  int SerialInByteCounter=0;                                                    // number of bytes counter 
 
-//  byte ValidCommand=0;
-//  unsigned long FocusTimer=0L;                                                  // Timer to keep focus on the task during communication
-//  InputBuffer_Serial[0]=0;                                                      // erase serial buffer string 
+  byte ValidCommand=0;
+  unsigned long FocusTimer=0L;                                                  // Timer to keep focus on the task during communication
+  InputBuffer_Serial[0]=0;                                                      // erase serial buffer string 
 
   while(true) {
 
@@ -227,11 +245,11 @@ void loop() {
 
     MQTTClient.loop();                                                          // Check for MQTT topics
     Alarm.delay(0);      
-/*
-    if(Serial.available()) {
-      FocusTimer=millis()+FOCUS_TIME;
 
-      while(FocusTimer>millis()) {                                              // standby 
+    if(Serial.available()) {
+      FocusTimer = millis() + FOCUS_TIME;
+
+      while(FocusTimer > millis()) {                                              // standby 
         if(Serial.available()) {
           SerialInByte=Serial.read();                
           
@@ -240,7 +258,7 @@ void loop() {
               InputBuffer_Serial[SerialInByteCounter++]=SerialInByte;
               
           if(SerialInByte=='\n') {                                              // new line character
-            InputBuffer_Serial[SerialInByteCounter]=0;                          // serieel data is complete
+            InputBuffer_Serial[SerialInByteCounter]=0;                          // serial data is complete
             //Serial.print("20;incoming;"); 
             //Serial.println(InputBuffer_Serial); 
             if (strlen(InputBuffer_Serial) > 7){                                // need to see minimal 8 characters on the serial port
@@ -318,7 +336,7 @@ void loop() {
                } else {
                   sprintf(InputBuffer_Serial, "20;%02X;CMD UNKNOWN;", PKSequenceNumber++); // Node and packet number 
                   Serial.println( InputBuffer_Serial );
-               }   
+               }  
             }
             SerialInByteCounter = 0;  
             InputBuffer_Serial[0] = 0;                                            // serial data has been processed. 
@@ -328,7 +346,6 @@ void loop() {
        }// if(Serial.available())
     }// while 
    }// if(Serial.available())
-*/
   }// while 
 }
 
